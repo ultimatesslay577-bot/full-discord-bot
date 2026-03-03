@@ -6,6 +6,7 @@ import os
 import asyncio
 from flask import Flask
 from threading import Thread
+import random
 
 # ---------------- CONFIG ----------------
 BOTS_CONFIG = [
@@ -28,12 +29,12 @@ app = Flask(__name__)
 def home():
     return "Bot(s) are running!"
 
-def run():
+def run_flask():
     port = int(os.environ.get("PORT", 8000))
     app.run(host="0.0.0.0", port=port)
 
 def keep_alive():
-    thread = Thread(target=run)
+    thread = Thread(target=run_flask)
     thread.daemon = True
     thread.start()
 
@@ -99,6 +100,7 @@ def create_bot(config):
         channel = bot.get_channel(channel_id)
         if channel and scoreboard_message_id:
             try:
+                await asyncio.sleep(1)  # small delay to avoid rate limits
                 msg = await channel.fetch_message(scoreboard_message_id)
                 await msg.edit(content=generate_scoreboard())
             except:
@@ -110,6 +112,10 @@ def create_bot(config):
         print(f"✅ {bot.user} is online!")
 
         channel = bot.get_channel(channel_id)
+        if channel is None:
+            print(f"❌ Channel not found for {bot_name}")
+            return
+
         async for msg in channel.history(limit=10):
             if msg.author == bot.user and f"**🏆 UGT {bot_name.capitalize()}'s Scoreboard**" in msg.content:
                 scoreboard_message_id = msg.id
@@ -118,6 +124,7 @@ def create_bot(config):
             msg = await channel.send(generate_scoreboard())
             scoreboard_message_id = msg.id
 
+        await asyncio.sleep(random.uniform(1,2))  # random delay to reduce global rate limit
         await tree.sync()
         print(f"✅ {bot_name.capitalize()} slash commands synced")
 
@@ -156,8 +163,12 @@ async def main():
         bot, token_env = create_bot(cfg)
         token = os.getenv(token_env)
         if not token:
-            print(f"⚠️ Token for {cfg['name']} not found in environment variables!")
+            print(f"⚠️ Token for {cfg['name']} not found. Skipping...")
+            continue
+
+        await asyncio.sleep(random.uniform(1,3))  # stagger bot startups to avoid 429
         tasks.append(asyncio.create_task(bot.start(token)))
+
     await asyncio.gather(*tasks)
 
 asyncio.run(main())
