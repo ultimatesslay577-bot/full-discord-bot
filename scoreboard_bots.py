@@ -22,16 +22,22 @@ DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # ---------------- FLASK KEEP-ALIVE ----------------
-app = Flask("")
+app = Flask(__name__)
 
 @app.route("/")
 def home():
     return "Bot(s) are running!"
 
-def run_flask():
-    app.run(host="0.0.0.0", port=8000)
+def run():
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)
 
-Thread(target=run_flask).start()
+def keep_alive():
+    thread = Thread(target=run)
+    thread.daemon = True
+    thread.start()
+
+keep_alive()
 
 # ---------------- BOT FACTORY ----------------
 def create_bot(config):
