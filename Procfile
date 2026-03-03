@@ -1,0 +1,1 @@
+worker: python scoreboard_bots.py
